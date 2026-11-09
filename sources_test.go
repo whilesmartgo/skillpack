@@ -69,6 +69,14 @@ func TestASymlinkOutOfASkillCannotBeRead(t *testing.T) {
 	if got := codes(skill.Validate()); len(got) != 1 || got[0] != "link-outside" {
 		t.Fatalf("codes = %#v", got)
 	}
+	checks := filepath.Join(base, "checks.yaml")
+	_ = os.WriteFile(checks, []byte("checks:\n  - id: leaked\n"), 0o644)
+	if err := os.Symlink(checks, filepath.Join(root, "checks.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	if got := skill.Checks(); got != nil {
+		t.Fatalf("read checks %#v through a link out of the skill", got)
+	}
 }
 
 func zipped(t *testing.T, files map[string]string) []byte {
@@ -166,7 +174,7 @@ func TestLoadURLRefusesWhatItCannotTrust(t *testing.T) {
 	}{
 		"download too large": {server.URL + "/big.zip", URLOptions{MaxDownload: 100}, "larger than 100 bytes"},
 		"unpacks too large":  {server.URL + "/big.zip", URLOptions{MaxExtracted: 100}, "unpacks to more than 100 bytes"},
-		"not an archive":     {server.URL + "/page.html", URLOptions{}, "not a .zip or .tar.gz archive"},
+		"not a skill":        {server.URL + "/page.html", URLOptions{}, "is not a discovery index, a SKILL.md or a .zip or .tar.gz archive"},
 		"missing":            {server.URL + "/gone.zip", URLOptions{}, "404"},
 		"not http":           {"file:///etc/passwd", URLOptions{}, "not an http or https address"},
 		"folder escapes":     {server.URL + "/big.zip", URLOptions{Dir: "../.."}, "is not a folder inside"},

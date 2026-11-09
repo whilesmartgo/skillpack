@@ -15,8 +15,9 @@ import (
 
 // Pack holds skills by name, in the order they were loaded.
 type Pack struct {
-	order  []*Skill
-	byName map[string]*Skill
+	order    []*Skill
+	byName   map[string]*Skill
+	warnings []string
 }
 
 // NewPack collects skills, refusing two with the same name.
@@ -32,30 +33,38 @@ func NewPack(skills []*Skill) (*Pack, error) {
 	return pack, nil
 }
 
-// Load reads skills from each location: a folder on disk, or an http(s)
-// URL of a .zip or .tar.gz archive. A location holding SKILL.md is one skill;
-// otherwise each child folder holding SKILL.md is. Use LoadURL to pass a
-// context, an HTTP client or limits for downloads.
+// Load reads skills from each location: a folder on disk, or an http(s) URL
+// that LoadURL reads. A folder holding SKILL.md is one skill; otherwise each
+// child folder holding SKILL.md is. Use LoadURL to pass a context, an HTTP
+// client, an allowlist of hosts or limits for downloads.
 func Load(locations ...string) (*Pack, error) {
 	skills := []*Skill{}
+	warnings := []string{}
 	for _, location := range locations {
-		found, err := loadLocation(location)
+		if isURL(location) {
+			pack, err := LoadURL(context.Background(), location, URLOptions{})
+			if err != nil {
+				return nil, err
+			}
+			skills = append(skills, pack.order...)
+			warnings = append(warnings, pack.warnings...)
+			continue
+		}
+		found, err := loadFolder(location)
 		if err != nil {
 			return nil, err
 		}
 		skills = append(skills, found...)
 	}
-	return NewPack(skills)
+	pack, err := NewPack(skills)
+	if err != nil {
+		return nil, err
+	}
+	pack.warnings = warnings
+	return pack, nil
 }
 
-func loadLocation(location string) ([]*Skill, error) {
-	if isURL(location) {
-		pack, err := LoadURL(context.Background(), location, URLOptions{})
-		if err != nil {
-			return nil, err
-		}
-		return pack.order, nil
-	}
+func loadFolder(location string) ([]*Skill, error) {
 	if info, err := os.Stat(filepath.Join(location, "SKILL.md")); err == nil && info.Mode().IsRegular() {
 		skill, err := LoadSkill(location)
 		if err != nil {
@@ -128,6 +137,10 @@ func LoadFS(fsys fs.FS, dirs ...string) (*Pack, error) {
 	return NewPack(skills)
 }
 
+// Warnings lists what loading skipped without failing, such as discovery
+// index entries of a type this version does not read.
+func (p *Pack) Warnings() []string { return append([]string(nil), p.warnings...) }
+
 // Skills returns the skills in load order.
 func (p *Pack) Skills() []*Skill { return append([]*Skill(nil), p.order...) }
 
@@ -177,7 +190,7 @@ func (p *Pack) IndexText() string {
 	return strings.Join(lines, "\n")
 }
 
-// Problems maps each skill with problems to them.
+// Problems returns validation problems by skill name, leaving out skills with none.
 func (p *Pack) Problems() map[string][]Problem {
 	found := map[string][]Problem{}
 	for _, skill := range p.order {

@@ -2,8 +2,8 @@ package skillpack
 
 import "strings"
 
-// Departure is a choice to go against one of a skill's checks, for the items
-// named, with the reason. It asks for an exception; the findings still stand.
+// Departure records a check the model went against on purpose, the items it
+// affects and why. It asks for an exception; the findings still stand.
 type Departure struct {
 	Check string   `json:"check"`
 	Items []string `json:"items"`
@@ -18,8 +18,8 @@ const framing = "The skills below are craft to draw on, not a routine to follow.
 
 // GuidanceOptions adjust the prompt Guidance builds.
 type GuidanceOptions struct {
-	// AlreadyUsed names choices recent work already made, so the next piece
-	// does not repeat them.
+	// AlreadyUsed lists choices recent work already made. The prompt asks the
+	// model to pick others unless the task needs one of them.
 	AlreadyUsed []string
 	// NamesOnly lists skills by name and description without their bodies,
 	// for a model that reads them through Tools.

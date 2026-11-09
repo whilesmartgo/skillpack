@@ -1,6 +1,6 @@
 // Package skillpack loads, validates and serves Agent Skills folders
-// (https://agentskills.io/specification) for any model. Skills come from
-// wherever they are kept: a folder on disk, any fs.FS, or an archive at a URL.
+// (https://agentskills.io/specification) for any model. Skills load from a
+// folder on disk, any fs.FS, a discovery index, a SKILL.md URL or an archive URL.
 // Loading reads text only; nothing in a skill's scripts/ folder is executed.
 package skillpack
 
@@ -82,10 +82,15 @@ type Skill struct {
 	// YAMLError is set when the frontmatter only read as plain "key: value"
 	// lines. Strict readers reject such a skill, so validation reports it.
 	YAMLError string
+	// Digest is the sha256 digest a discovery index listed for the skill's
+	// artifact, which LoadURL verified. It is empty for skills read any other
+	// way.
+	Digest string
 
-	fsys   fs.FS
-	dir    string
-	folder string
+	indexDescription string
+	fsys             fs.FS
+	dir              string
+	folder           string
 	// disk is the skill's folder on disk, when it has one. Symbolic links
 	// there are resolved so a file cannot be read from outside the folder.
 	disk string
@@ -207,7 +212,7 @@ func (s *Skill) Metadata() map[string]string {
 	return found
 }
 
-// AllowedTools is the space-separated allowed-tools field, split.
+// AllowedTools returns the tool names in the space-separated allowed-tools field.
 func (s *Skill) AllowedTools() []string {
 	value, _ := s.Frontmatter["allowed-tools"].(string)
 	return strings.Fields(value)
@@ -363,7 +368,11 @@ func (s *Skill) Links() []string {
 // Checks lists the checks the skill declares in checks.yaml, in file order.
 // Evaluating them is up to the host; this package does not run them.
 func (s *Skill) Checks() []CheckRef {
-	text, err := fs.ReadFile(s.fsys, path.Join(s.dir, "checks.yaml"))
+	name, err := s.resolve("checks.yaml")
+	if err != nil {
+		return nil
+	}
+	text, err := fs.ReadFile(s.fsys, name)
 	if err != nil {
 		return nil
 	}
@@ -462,6 +471,10 @@ func (s *Skill) Validate() []Problem {
 		if _, err := fs.Stat(s.fsys, name); errors.Is(err, fs.ErrNotExist) {
 			add("link-missing", "SKILL.md links to "+target+", which does not exist", SeverityError, target)
 		}
+	}
+
+	if s.indexDescription != "" && strings.TrimSpace(s.indexDescription) != s.Description() {
+		add("index-description", "The discovery index describes this skill differently from its SKILL.md", SeverityWarning, "")
 	}
 
 	if lines := strings.Count(s.Body, "\n") + 1; lines > LongestBody {
