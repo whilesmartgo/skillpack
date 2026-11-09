@@ -1,7 +1,8 @@
 # skillpack
 
-Load, check and serve [Agent Skills](https://agentskills.io/specification) folders from Go, with
-any model.
+Load, check and serve [Agent Skills](https://agentskills.io/specification) from Go, with any model.
+Skills can come from a folder, any `fs.FS`, a `SKILL.md` link, a `.zip` or `.tar.gz` archive, or
+an Agent Skills Discovery index.
 
 A skill is a folder with a `SKILL.md` (YAML frontmatter with `name` and `description`, then
 markdown guidance) and optional `references/`, `assets/` and `scripts/`. skillpack ships no skills
