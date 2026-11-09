@@ -1,0 +1,5 @@
+checks:
+  - id: primary-action
+    description: The page's main action is visible without scrolling
+    evaluator: layout.primary-action.v1
+  - id: tap-targets
