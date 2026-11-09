@@ -1,13 +1,14 @@
 # skillpack
 
-Load, check and serve [Agent Skills](https://agentskills.io/specification) from Go, with any model.
-Skills can come from a folder, any `fs.FS`, a `SKILL.md` link, a `.zip` or `.tar.gz` archive, or
-an Agent Skills Discovery index.
+Load [Agent Skills](https://agentskills.io/specification) in Go from a folder on disk, any `fs.FS`,
+a `SKILL.md` URL, a `.zip` or `.tar.gz` URL, or an Agent Skills Discovery v0.2.0 index. A bare site
+address loads its well-known index, and each download from an index is checked against its sha256
+digest.
 
 A skill is a folder with a `SKILL.md` (YAML frontmatter with `name` and `description`, then
 markdown guidance) and optional `references/`, `assets/` and `scripts/`. skillpack ships no skills
-of its own. It loads them from where you keep them, checks them against the spec, and gives a
-model their contents a piece at a time. Loading a skill never runs anything in it.
+of its own. Validation is a separate call. A model gets the skills as prompt text or as tools.
+Loading a skill never runs anything in it.
 
 ```sh
 go get github.com/whilesmartgo/skillpack

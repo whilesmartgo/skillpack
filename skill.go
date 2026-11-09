@@ -1,6 +1,7 @@
-// Package skillpack loads, validates and serves Agent Skills folders
-// (https://agentskills.io/specification) for any model. Skills load from a
-// folder on disk, any fs.FS, a discovery index, a SKILL.md URL or an archive URL.
+// Package skillpack loads Agent Skills (https://agentskills.io/specification)
+// from a folder on disk, any fs.FS, a SKILL.md URL, a .zip or .tar.gz URL, or an
+// Agent Skills Discovery v0.2.0 index, and gives them to any model as prompt text
+// or as tools. Validation is a separate call.
 // Loading reads text only; nothing in a skill's scripts/ folder is executed.
 package skillpack
 
